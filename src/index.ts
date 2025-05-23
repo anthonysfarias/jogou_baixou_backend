@@ -28,17 +28,6 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' })); // Limit URL-enco
 // Do NOT expose uploads directory directly - security risk
 // Instead, all file access should go through the API
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || config.cors.allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-}));
-
-
 // API routes with rate limiting
 app.use('/api', fileRoutes);
 
