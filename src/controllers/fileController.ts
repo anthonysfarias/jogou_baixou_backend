@@ -24,7 +24,7 @@ export const uploadFile = (req: Request, res: Response) => {
       size: req.file.size,
       path: req.file.path,
       uploadDate: new Date(),
-      expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      expiryDate: new Date(Date.now() + 60 * 1000), // 1 minute from now
     };
 
     // Save file info
