@@ -1,6 +1,6 @@
-# DropShare Backend
+# Jogou Baixou Backend
 
-This is the backend server for the DropShare file sharing application. It provides API endpoints for uploading and downloading files with enhanced security measures.
+This is the backend server for the Jogou Baixou file sharing application. It provides API endpoints for uploading and downloading files with enhanced security measures.
 
 ## Features
 

@@ -52,7 +52,7 @@ app.listen(config.server.port, () => {
   console.log(`- Upload endpoint: http://localhost:${config.server.port}/api/upload`);
   console.log(`- Download endpoint: http://localhost:${config.server.port}/api/download/:id`);
   
-  // Log cleanup service details
+  // Log cleanup service details'
   console.log(`File cleanup service started (interval: 20 seconds)`);
   
   // Initial cleanup on server start

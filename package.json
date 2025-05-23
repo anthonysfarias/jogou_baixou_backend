@@ -1,7 +1,7 @@
 {
-  "name": "dropshare-backend",
+  "name": "jogou-baixou-backend",
   "version": "1.0.0",
-  "description": "Backend for DropShare file sharing application",
+  "description": "Backend for Jogou Baixou file sharing application",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
