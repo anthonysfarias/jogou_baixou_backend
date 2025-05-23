@@ -41,7 +41,7 @@ app.use(errorHandler);       // Handle security-related errors
 app.use(globalErrorHandler); // Catch-all error handler
 
 // Define cleanup interval
-const CLEANUP_INTERVAL = 4 * 60 * 1000; // 4 minutes
+const CLEANUP_INTERVAL = 20 * 1000; // 20 seconds
 
 // Start server
 app.listen(config.server.port, () => {
@@ -53,7 +53,7 @@ app.listen(config.server.port, () => {
   console.log(`- Download endpoint: http://localhost:${config.server.port}/api/download/:id`);
   
   // Log cleanup service details
-  console.log(`File cleanup service started (interval: ${CLEANUP_INTERVAL/60000} minutes)`);
+  console.log(`File cleanup service started (interval: 20 seconds)`);
   
   // Initial cleanup on server start
   try {

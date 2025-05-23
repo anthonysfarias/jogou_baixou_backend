@@ -25,7 +25,7 @@ export const uploadFile = (req: Request, res: Response) => {
       size: req.file.size,
       path: req.file.path,
       uploadDate: new Date(),
-      expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+      expiryDate: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes from now
       downloadCount: 0
     };
 
@@ -47,7 +47,7 @@ export const uploadFile = (req: Request, res: Response) => {
       size: savedFileInfo.size,
       expiryDate: savedFileInfo.expiryDate,
       downloadUrl: `/api/download/${savedFileInfo.id}`,
-      message: 'File will expire in 24 hours'
+      message: 'File will expire in 5 minutes'
     });
   } catch (error) {
     console.error('Error uploading file:', error);
