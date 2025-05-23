@@ -1,20 +1,22 @@
 import { Request, Response } from 'express';
 import path from 'path';
-import fs from 'fs'
-import { FileInfo, saveFileInfo, getFileInfoById } from '../utils/fileStorage';
+import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+import { FileInfo, saveFileInfo, getFileInfoById, isFileExpired, incrementDownloadCount, deleteFileInfo } from '../utils/fileStorage';
+import { config } from '../config/env';
 
-// Handle file upload
+// Handle file upload with security measures
 export const uploadFile = (req: Request, res: Response) => {
-  try {
-    // Check if file was uploaded
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
+  // Check if file was uploaded
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
 
-    // Generate a unique ID for the file
-    const fileId = path.basename(req.file.filename, path.extname(req.file.filename));
+  try {
+    // Generate a secure UUID for the file ID
+    const fileId = uuidv4();
     
-    // Create file info object
+    // Create file info with security features
     const fileInfo: FileInfo = {
       id: fileId,
       originalName: req.file.originalname,
@@ -23,87 +25,107 @@ export const uploadFile = (req: Request, res: Response) => {
       size: req.file.size,
       path: req.file.path,
       uploadDate: new Date(),
-      expiryDate: new Date(Date.now() + 60 * 1000), // 1 minute from now
+      expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+      downloadCount: 0
     };
 
-    // Save file info
+    // Save file info - this will generate an access token internally
     saveFileInfo(fileInfo);
+    
+    // Get the file info with the generated access token
+    const savedFileInfo = getFileInfoById(fileId);
+    
+    if (!savedFileInfo) {
+      throw new Error('Failed to save file information');
+    }
 
-    // Return success response with file ID
-    return res.status(201).json({
-      success: true,
-      fileId,
-      message: 'File uploaded successfully',
+    // Return limited information to the client (no internal paths or tokens)
+    res.status(201).json({
+      id: savedFileInfo.id,
+      fileId: savedFileInfo.id, // Include fileId for backward compatibility
+      originalName: savedFileInfo.originalName,
+      size: savedFileInfo.size,
+      expiryDate: savedFileInfo.expiryDate,
+      downloadUrl: `/api/download/${savedFileInfo.id}`,
+      message: 'File will expire in 24 hours'
     });
   } catch (error) {
-    console.error('Upload error:', error);
-    return res.status(500).json({ error: 'Server error during upload' });
+    console.error('Error uploading file:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
   }
 };
 
-// Get file info
+// Get file info with security measures
 export const getFileInfo = (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  // Validate ID format to prevent injection attacks
+  const validIdRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!validIdRegex.test(id)) {
+    return res.status(400).json({ error: 'Invalid file ID format' });
+  }
+  
   try {
-    const { id } = req.params;
-    
-    // Get file info from storage
     const fileInfo = getFileInfoById(id);
     
     if (!fileInfo) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'File not found or expired' });
     }
-
-    // Check if file has expired
-    if (new Date() > fileInfo.expiryDate) {
-      return res.status(410).json({ error: 'File link has expired' });
-    }
-
-    // Return file info (excluding the actual file path for security)
-    return res.status(200).json({
+    
+    // Return only necessary information, not internal file paths
+    res.json({
       id: fileInfo.id,
       originalName: fileInfo.originalName,
       size: fileInfo.size,
       mimetype: fileInfo.mimetype,
       uploadDate: fileInfo.uploadDate,
       expiryDate: fileInfo.expiryDate,
+      downloadCount: fileInfo.downloadCount || 0
     });
   } catch (error) {
-    console.error('Get file info error:', error);
-    return res.status(500).json({ error: 'Server error' });
+    console.error('Error getting file info:', error);
+    res.status(500).json({ error: 'Failed to get file info' });
   }
 };
 
-// Handle file download
+// Download file with security measures
 export const downloadFile = (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  // Validate ID format to prevent injection attacks
+  const validIdRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!validIdRegex.test(id)) {
+    return res.status(400).json({ error: 'Invalid file ID format' });
+  }
+  
   try {
-    const { id } = req.params;
-    
-    // Get file info from storage
     const fileInfo = getFileInfoById(id);
     
     if (!fileInfo) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'File not found or expired' });
     }
-
-    // Check if file has expired
-    if (new Date() > fileInfo.expiryDate) {
-      return res.status(410).json({ error: 'File link has expired' });
-    }
-
+    
     // Check if file exists on disk
     if (!fs.existsSync(fileInfo.path)) {
+      // Clean up inconsistent state
+      deleteFileInfo(id);
       return res.status(404).json({ error: 'File not found on server' });
     }
-
-    // Set headers for file download
+    
+    // Increment download count for analytics
+    incrementDownloadCount(id);
+    
+    // Set secure headers for file download
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileInfo.originalName)}"`);
     res.setHeader('Content-Type', fileInfo.mimetype);
-
-    // Stream the file
+    res.setHeader('X-Content-Type-Options', 'nosniff'); // Prevent MIME type sniffing
+    res.setHeader('Cache-Control', 'no-store'); // Prevent caching
+    
+    // Send file
     const fileStream = fs.createReadStream(fileInfo.path);
     fileStream.pipe(res);
   } catch (error) {
-    console.error('Download error:', error);
-    return res.status(500).json({ error: 'Server error during download' });
+    console.error('Error downloading file:', error);
+    res.status(500).json({ error: 'Failed to download file' });
   }
 };

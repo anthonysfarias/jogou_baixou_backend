@@ -1,21 +1,33 @@
 import express from 'express';
-import cors from 'cors';
 import path from 'path';
 import { fileRoutes } from './routes/fileRoutes';
 import { cleanupExpiredFiles } from './utils/fileStorage';
+import { config } from './config/env';
+import { 
+  helmetMiddleware, 
+  corsMiddleware, 
+  apiLimiter, 
+  errorHandler 
+} from './middlewares/securityMiddleware';
+import { contentSecurityPolicy } from './middlewares/cspMiddleware';
+import { uploadErrorHandler, globalErrorHandler } from './middlewares/errorHandlerMiddleware';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Security middleware - order is important
+app.use(helmetMiddleware);       // Secure HTTP headers
+app.use(contentSecurityPolicy);  // Content Security Policy
+app.use(corsMiddleware);         // CORS protection
+app.use(apiLimiter);             // Rate limiting
 
-// Static uploads folder
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Standard middleware
+app.use(express.json({ limit: '1mb' })); // Limit JSON body size
+app.use(express.urlencoded({ extended: true, limit: '1mb' })); // Limit URL-encoded body size
 
-// Routes
+// Do NOT expose uploads directory directly - security risk
+// Instead, all file access should go through the API
+
+// API routes with rate limiting
 app.use('/api', fileRoutes);
 
 // Health check route
@@ -23,30 +35,42 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
 
+// Error handling middleware (order matters)
+app.use(uploadErrorHandler);  // Handle file upload errors first
+app.use(errorHandler);       // Handle security-related errors
+app.use(globalErrorHandler); // Catch-all error handler
+
+// Define cleanup interval
+const CLEANUP_INTERVAL = 4 * 60 * 1000; // 4 minutes
+
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`- Upload endpoint: http://localhost:${PORT}/api/upload`);
-  console.log(`- Download endpoint: http://localhost:${PORT}/api/download/:id`);
+app.listen(config.server.port, () => {
+  console.log(`Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`);
+  console.log(`CORS allowed origins: ${config.cors.allowedOrigins.join(', ')}`);
+  console.log(`Upload directory: ${config.upload.uploadPath}`);
+  console.log(`Max file size: ${config.upload.maxFileSize / (1024 * 1024)}MB`);
+  console.log(`- Upload endpoint: http://localhost:${config.server.port}/api/upload`);
+  console.log(`- Download endpoint: http://localhost:${config.server.port}/api/download/:id`);
   
-  // Set up automatic cleanup of expired files
-  const CLEANUP_INTERVAL = 10 * 1000; // 10 seconds
+  // Log cleanup service details
+  console.log(`File cleanup service started (interval: ${CLEANUP_INTERVAL/60000} minutes)`);
   
-  console.log(`File cleanup service started (interval: ${CLEANUP_INTERVAL/1000} seconds)`);
-  
-  // Initial cleanup
-  const initialDeletedCount = cleanupExpiredFiles();
-  if (initialDeletedCount > 0) {
-    console.log(`Initial cleanup: Deleted ${initialDeletedCount} expired file(s)`);
+  // Initial cleanup on server start
+  try {
+    cleanupExpiredFiles();
+    console.log('Initial cleanup completed');
+  } catch (error) {
+    console.error('Error during initial cleanup:', error);
   }
-  
-  // Set up recurring cleanup
-  setInterval(() => {
-    const deletedCount = cleanupExpiredFiles();
-    if (deletedCount > 0) {
-      console.log(`Cleanup: Deleted ${deletedCount} expired file(s)`);
-    }
-  }, CLEANUP_INTERVAL);
 });
+
+// Set up recurring cleanup
+setInterval(() => {
+  try {
+    cleanupExpiredFiles();
+  } catch (error) {
+    console.error('Error during scheduled cleanup:', error);
+  }
+}, CLEANUP_INTERVAL);
 
 export default app;
