@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import cors from 'cors';
 import { fileRoutes } from './routes/fileRoutes';
 import { cleanupExpiredFiles } from './utils/fileStorage';
 import { config } from './config/env';
@@ -26,6 +27,10 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' })); // Limit URL-enco
 
 // Do NOT expose uploads directory directly - security risk
 // Instead, all file access should go through the API
+
+app.use(cors({
+  origin: config.cors.allowedOrigins,
+}));
 
 // API routes with rate limiting
 app.use('/api', fileRoutes);
