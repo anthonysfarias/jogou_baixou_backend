@@ -2,18 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { FileUploadError } from '../middlewares/errorHandlerMiddleware';
-
-/**
- * Interface for sanitized file information
- */
-export interface SanitizedFileInfo {
-  originalName: string;
-  sanitizedName: string;
-  extension: string;
-  mimeType: string;
-  size: number;
-  hash: string;
-}
+import { SanitizedFileInfo } from '../types/interfaces';
 
 /**
  * List of potentially dangerous file extensions
