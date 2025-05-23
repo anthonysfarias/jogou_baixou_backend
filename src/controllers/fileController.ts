@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import path from 'path';
-import fs from 'fs';
-import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs'
 import { FileInfo, saveFileInfo, getFileInfoById } from '../utils/fileStorage';
 
 // Handle file upload
