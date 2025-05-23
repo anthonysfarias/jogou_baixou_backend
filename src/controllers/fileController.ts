@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
-import path from 'path';
-import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { FileInfo, saveFileInfo, getFileInfoById, isFileExpired, incrementDownloadCount, deleteFileInfo } from '../utils/fileStorage';
+import fs from 'fs';
+import path from 'path';
+
+import { FileInfo } from '../types/interfaces';
+import { saveFileInfo, getFileInfoById, isFileExpired, incrementDownloadCount, deleteFileInfo } from '../utils/fileStorage';
 import { config } from '../config/env';
 
 // Handle file upload with security measures

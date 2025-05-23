@@ -1,21 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { FileInfo } from '../types/interfaces';
 import { config } from '../config/env';
-
-// Define file info type with enhanced security fields
-export interface FileInfo {
-  id: string;
-  originalName: string;
-  filename: string;
-  mimetype: string;
-  size: number;
-  path: string;
-  uploadDate: Date;
-  expiryDate: Date;
-  accessToken?: string; // Optional security token for downloads
-  downloadCount?: number; // Track number of downloads
-}
 
 // In-memory storage for file info
 const fileInfoStorage: Record<string, FileInfo> = {};
