@@ -13,7 +13,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   
   // CORS configuration
-  ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:5173'),
+  // ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:5173'),
+  ALLOWED_ORIGINS: z.string().default('https://jogou-baixou.vercel.app/'),
   
   // File upload configuration
   MAX_FILE_SIZE: z.string().default('10485760'), // 10MB in bytes
