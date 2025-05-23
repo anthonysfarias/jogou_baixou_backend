@@ -13,10 +13,16 @@ export const corsMiddleware = cors({
     // Allow requests with no origin (like mobile apps, curl requests)
     if (!origin) return callback(null, true);
     
+    // In production, specifically allow the Vercel frontend
+    if (config.server.nodeEnv === 'production' && origin === 'https://jogou-baixou.vercel.app') {
+      return callback(null, true);
+    }
+    
     // Check if the origin is in the allowed list
     if (config.cors.allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
     } else {
+      console.warn(`CORS blocked origin: ${origin}`);
       return callback(new Error('CORS policy violation'), false);
     }
   },
